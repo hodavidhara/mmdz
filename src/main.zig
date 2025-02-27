@@ -1,4 +1,5 @@
 const std = @import("std");
+const mmdz = @import("mmdz");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -17,7 +18,7 @@ pub fn main() !void {
     }
     const file_path = args[1];
 
-    const file = try std.fs.cwd().openFile(file_path, .{.mode = .read_only});
+    const file = try std.fs.cwd().openFile(file_path, .{ .mode = .read_only });
     defer file.close();
     var br = std.io.bufferedReader(file.reader());
     const file_size = (try file.stat()).size;
