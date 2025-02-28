@@ -3,36 +3,60 @@ const mecha = @import("mecha");
 
 const testing = std.testing;
 
+const StringArrayList = std.ArrayList([]const u8);
+const Graph = std.StringHashMap(StringArrayList);
+
 const Flowchart = struct {
-    const Graph = std.StringHashMap(std.ArrayList([]u8));
-    graph: *Graph,
+    graph: Graph,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Flowchart {
-        var graph = Graph.init(allocator);
-        return Flowchart{ .graph = &graph, .allocator = allocator };
+        return Flowchart{ .graph = Graph.init(allocator), .allocator = allocator };
     }
 
-    pub fn deinit(self: Flowchart) void {
+    pub fn deinit(self: *Flowchart) void {
+        var iterator = self.graph.valueIterator();
+        while (iterator.next()) |value| {
+            value.deinit();
+        }
         self.graph.deinit();
     }
 
-    pub fn addNode(self: Flowchart, node: []const u8) !void {
+    pub fn addNode(self: *Flowchart, node: []const u8) !void {
         if (!self.graph.contains(node)) {
-            try self.graph.put(node, std.ArrayList([]u8).init(self.allocator));
+            try self.graph.put(node, StringArrayList.init(self.allocator));
         }
     }
+
+    pub fn listNodes(self: Flowchart, allocator: std.mem.Allocator) !StringArrayList {
+        var iterator = self.graph.keyIterator();
+        var nodes = StringArrayList.init(allocator);
+        while (iterator.next()) |key| {
+            try nodes.append(key.*);
+        }
+        return nodes;
+    }
 };
+
+
+fn arrayContains(comptime T: type, haystack: []T, needle: T) bool {
+    for (haystack) |element|
+    // TODO: How to make this generic? T doesn't work when we're looking at an array/slice of string
+        if (std.mem.eql(u8, element, needle))
+            return true;
+    return false;
+}
 
 test "Flowchart" {
     var flowchart = Flowchart.init(testing.allocator);
     defer flowchart.deinit();
     try flowchart.addNode("A");
     try flowchart.addNode("B");
-    var expected = std.StringHashMap(std.ArrayList([]u8)).init(testing.allocator);
-    try expected.put("A", std.ArrayList([]u8).init(testing.allocator));
-    try expected.put("B", std.ArrayList([]u8).init(testing.allocator));
-    try testing.expect(std.meta.eql(&expected, flowchart.graph));
+    try flowchart.addNode("SEE");
+    try testing.expectEqual(3, flowchart.graph.count());
+    var actual = try flowchart.listNodes(testing.allocator);
+    defer actual.deinit();
+    try testing.expect(arrayContains([]const u8, actual.items, "A"));
 }
 
 const Rgb = struct {
