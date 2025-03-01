@@ -1,9 +1,9 @@
 const std = @import("std");
 const mecha = @import("mecha");
+const StringArrayList = @import("./string_array_list.zig").StringArrayList;
 
 const testing = std.testing;
 
-const StringArrayList = std.ArrayList([]const u8);
 const Graph = std.StringHashMap(StringArrayList);
 
 const Flowchart = struct {
@@ -38,11 +38,9 @@ const Flowchart = struct {
     }
 };
 
-
-fn arrayContains(comptime T: type, haystack: []T, needle: T) bool {
+fn arrayContains(comptime T: type, haystack: [][]const T, needle: []const T) bool {
     for (haystack) |element|
-    // TODO: How to make this generic? T doesn't work when we're looking at an array/slice of string
-        if (std.mem.eql(u8, element, needle))
+        if (std.mem.eql(T, element, needle))
             return true;
     return false;
 }
@@ -54,9 +52,15 @@ test "Flowchart" {
     try flowchart.addNode("B");
     try flowchart.addNode("SEE");
     try testing.expectEqual(3, flowchart.graph.count());
-    var actual = try flowchart.listNodes(testing.allocator);
-    defer actual.deinit();
-    try testing.expect(arrayContains([]const u8, actual.items, "A"));
+    var nodes = try flowchart.listNodes(testing.allocator);
+    defer nodes.deinit();
+    try testing.expect(arrayContains(u8, nodes.items(), "A"));
+    try testing.expect(nodes.contains("A"));
+    try testing.expect(nodes.contains("B"));
+    try testing.expect(nodes.contains("SEE"));
+    const a = try testing.allocator.dupe(u8, "A");
+    defer testing.allocator.free(a);
+    try testing.expect(nodes.contains(a));
 }
 
 const Rgb = struct {
@@ -107,4 +111,8 @@ test "rgb" {
     try testing.expectEqual(@as(u8, 0), d.r);
     try testing.expectEqual(@as(u8, 0), d.g);
     try testing.expectEqual(@as(u8, 0), d.b);
+}
+
+test {
+    std.testing.refAllDecls(@This());
 }
